@@ -427,7 +427,7 @@ export default function Page() {
 
   const [store, setStore] = createStore({
     messageId: undefined as string | undefined,
-    mobileTab: "session" as "session" | "changes",
+    mobileTab: "session" as "session" | "filetree",
     changes: "session" as "session" | "turn",
     newSessionWorktree: "main",
     deferRender: false,
@@ -677,7 +677,7 @@ export default function Page() {
       .filter((tab) => tab !== "context" && tab !== "review"),
   )
 
-  const mobileChanges = createMemo(() => !isDesktop() && store.mobileTab === "changes")
+  const mobileChanges = createMemo(() => false)
   const reviewTab = createMemo(() => isDesktop())
 
   const fileTreeTab = () => layout.fileTree.tab()
@@ -991,7 +991,7 @@ export default function Page() {
 
     const wants = isDesktop()
       ? desktopFileTreeOpen() || (desktopReviewOpen() && activeTab() === "review")
-      : store.mobileTab === "changes"
+      : store.mobileTab === "filetree"
     if (!wants) return
     if (sync.data.session_diff[id] !== undefined) return
     if (sync.status === "loading") return
@@ -1187,7 +1187,7 @@ export default function Page() {
           hasReview={hasReview()}
           reviewCount={reviewCount()}
           onSession={() => setStore("mobileTab", "session")}
-          onChanges={() => setStore("mobileTab", "changes")}
+          onFiletree={() => setStore("mobileTab", "filetree")}
         />
 
         {/* Session panel */}
@@ -1196,6 +1196,7 @@ export default function Page() {
             "@container relative shrink-0 flex flex-col min-h-0 h-full bg-background-stronger": true,
             "flex-1": true,
             "md:flex-none": desktopSidePanelOpen(),
+            "hidden": !isDesktop() && store.mobileTab === "filetree",
           }}
           style={{
             width: sessionPanelWidth(),
@@ -1271,24 +1272,26 @@ export default function Page() {
             </Switch>
           </div>
 
-          <SessionComposerRegion
-            state={composer}
-            ready={!store.deferRender && messagesReady()}
-            centered={centered()}
-            inputRef={(el) => {
-              inputRef = el
-            }}
-            newSessionWorktree={newSessionWorktree()}
-            onNewSessionWorktreeReset={() => setStore("newSessionWorktree", "main")}
-            onSubmit={() => {
-              comments.clear()
-              resumeScroll()
-            }}
-            onResponseSubmit={resumeScroll}
-            setPromptDockRef={(el) => {
-              promptDock = el
-            }}
-          />
+          <Show when={isDesktop() || store.mobileTab === "session"}>
+            <SessionComposerRegion
+              state={composer}
+              ready={!store.deferRender && messagesReady()}
+              centered={centered()}
+              inputRef={(el) => {
+                inputRef = el
+              }}
+              newSessionWorktree={newSessionWorktree()}
+              onNewSessionWorktreeReset={() => setStore("newSessionWorktree", "main")}
+              onSubmit={() => {
+                comments.clear()
+                resumeScroll()
+              }}
+              onResponseSubmit={resumeScroll}
+              setPromptDockRef={(el) => {
+                promptDock = el
+              }}
+            />
+          </Show>
 
           <Show when={desktopReviewOpen()}>
             <ResizeHandle
@@ -1301,7 +1304,7 @@ export default function Page() {
           </Show>
         </div>
 
-        <SessionSidePanel reviewPanel={reviewPanel} activeDiff={tree.activeDiff} focusReviewDiff={focusReviewDiff} />
+        <SessionSidePanel reviewPanel={reviewPanel} activeDiff={tree.activeDiff} focusReviewDiff={focusReviewDiff} mobileOpen={!isDesktop() && store.mobileTab === "filetree"} />
       </div>
 
       <TerminalPanel />

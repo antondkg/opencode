@@ -31,6 +31,7 @@ export function SessionSidePanel(props: {
   reviewPanel: () => JSX.Element
   activeDiff?: string
   focusReviewDiff: (path: string) => void
+  mobileOpen?: boolean
 }) {
   const params = useParams()
   const layout = useLayout()
@@ -46,8 +47,10 @@ export function SessionSidePanel(props: {
   const view = createMemo(() => layout.view(sessionKey))
 
   const reviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
-  const open = createMemo(() => isDesktop() && (view().reviewPanel.opened() || layout.fileTree.opened()))
+  const fileEditorOpen = createMemo(() => props.mobileOpen || reviewOpen())
+  const open = createMemo(() => props.mobileOpen || (isDesktop() && (view().reviewPanel.opened() || layout.fileTree.opened())))
   const reviewTab = createMemo(() => isDesktop())
+  const fileTreeVisible = createMemo(() => props.mobileOpen || layout.fileTree.opened())
 
   const info = createMemo(() => (params.id ? sync.session.get(params.id) : undefined))
   const diffs = createMemo(() => (params.id ? (sync.data.session_diff[params.id] ?? []) : []))
@@ -209,13 +212,14 @@ export function SessionSidePanel(props: {
         aria-label={language.t("session.panel.reviewAndFiles")}
         class="relative min-w-0 h-full border-l border-border-weak-base flex"
         classList={{
-          "flex-1": reviewOpen(),
-          "shrink-0": !reviewOpen(),
+          "flex-col": !!props.mobileOpen,
+          "flex-1": reviewOpen() || !!props.mobileOpen,
+          "shrink-0": !reviewOpen() && !props.mobileOpen,
         }}
-        style={{ width: reviewOpen() ? undefined : `${layout.fileTree.width()}px` }}
+        style={{ width: (reviewOpen() || props.mobileOpen) ? undefined : `${layout.fileTree.width()}px` }}
       >
-        <Show when={reviewOpen()}>
-          <div class="flex-1 min-w-0 h-full">
+        <Show when={fileEditorOpen()}>
+          <div class="flex-1 min-w-0" classList={{ "h-full": !props.mobileOpen, "min-h-0": !!props.mobileOpen }}>
             <DragDropProvider
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
@@ -343,11 +347,11 @@ export function SessionSidePanel(props: {
           </div>
         </Show>
 
-        <Show when={layout.fileTree.opened()}>
-          <div id="file-tree-panel" class="relative shrink-0 h-full" style={{ width: `${layout.fileTree.width()}px` }}>
+        <Show when={fileTreeVisible()}>
+          <div id="file-tree-panel" class="relative" classList={{ "shrink-0 h-full": !props.mobileOpen, "shrink-0 h-[40%] overflow-auto border-t border-border-weak-base": !!props.mobileOpen }} style={{ width: props.mobileOpen ? "100%" : `${layout.fileTree.width()}px` }}>
             <div
               class="h-full flex flex-col overflow-hidden group/filetree"
-              classList={{ "border-l border-border-weak-base": reviewOpen() }}
+              classList={{ "border-l border-border-weak-base": fileEditorOpen() }}
             >
               <Tabs
                 variant="pill"
@@ -357,7 +361,7 @@ export function SessionSidePanel(props: {
                 data-scope="filetree"
               >
                 <Tabs.List data-scrolled={store.fileTreeScrolled ? "" : undefined}>
-                  <Tabs.Trigger value="changes" class="flex-1" classes={{ button: "w-full" }}>
+                  <Tabs.Trigger value="changes" class="flex-1" classList={{ "hidden": !!props.mobileOpen }} classes={{ button: "w-full" }}>
                     {reviewCount()}{" "}
                     {language.t(reviewCount() === 1 ? "session.review.change.one" : "session.review.change.other")}
                   </Tabs.Trigger>

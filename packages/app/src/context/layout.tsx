@@ -240,7 +240,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         },
         review: {
           diffStyle: "split" as ReviewDiffStyle,
-          panelOpened: true,
+          panelOpened: false,
         },
         fileTree: {
           opened: true,

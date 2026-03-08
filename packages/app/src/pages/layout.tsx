@@ -156,6 +156,7 @@ export default function Layout(props: ParentProps) {
   }
   const isBusy = (directory: string) => !!state.busyWorkspaces[workspaceKey(directory)]
   const navLeave = { current: undefined as number | undefined }
+  const [mobileSidebarWidth, setMobileSidebarWidth] = createSignal(144)
   const [sortNow, setSortNow] = createSignal(Date.now())
   let sortNowInterval: ReturnType<typeof setInterval> | undefined
   const sortNowTimeout = setTimeout(
@@ -2114,26 +2115,12 @@ export default function Layout(props: ParentProps) {
             />
           </Show>
         </nav>
-        <div class="xl:hidden">
-          <div
-            classList={{
-              "fixed inset-x-0 top-10 bottom-0 z-40 transition-opacity duration-200": true,
-              "opacity-100 pointer-events-auto": layout.mobileSidebar.opened(),
-              "opacity-0 pointer-events-none": !layout.mobileSidebar.opened(),
-            }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) layout.mobileSidebar.hide()
-            }}
-          />
+        <div class="xl:hidden flex shrink-0 relative">
           <nav
             aria-label={language.t("sidebar.nav.projectsAndSessions")}
             data-component="sidebar-nav-mobile"
-            classList={{
-              "@container fixed top-10 bottom-0 left-0 z-50 w-72 bg-background-base transition-transform duration-200 ease-out": true,
-              "translate-x-0": layout.mobileSidebar.opened(),
-              "-translate-x-full": !layout.mobileSidebar.opened(),
-            }}
-            onClick={(e) => e.stopPropagation()}
+            class="@container relative h-full bg-background-base shrink-0 [&_nav_a_div>div.shrink-0.size-6]:hidden"
+            style={{ width: `${mobileSidebarWidth()}px` }}
           >
             <SidebarContent
               mobile
@@ -2160,6 +2147,13 @@ export default function Layout(props: ParentProps) {
               renderPanel={() => <SidebarPanel project={currentProject()} mobile />}
             />
           </nav>
+          <ResizeHandle
+            direction="horizontal"
+            size={mobileSidebarWidth()}
+            min={100}
+            max={280}
+            onResize={setMobileSidebarWidth}
+          />
         </div>
 
         <main
