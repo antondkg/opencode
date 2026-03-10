@@ -39,7 +39,7 @@ export const SidebarContent = (props: {
   return (
     <div class="flex h-full w-full overflow-hidden">
       <div
-        class="w-16 shrink-0 bg-background-base flex flex-col items-center overflow-hidden hidden md:flex"
+        class="w-16 shrink-0 bg-background-base flex flex-col items-center overflow-hidden hidden lg:flex"
         onMouseMove={props.aimMove}
       >
         <div class="flex-1 min-h-0 w-full">

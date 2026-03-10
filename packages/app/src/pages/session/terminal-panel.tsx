@@ -27,7 +27,7 @@ export function TerminalPanel() {
   const language = useLanguage()
   const command = useCommand()
 
-  const isDesktop = createMediaQuery("(min-width: 768px)")
+  const isDesktop = createMediaQuery("(min-width: 1024px)")
   const sessionKey = createMemo(() => `${params.dir}${params.id ? "/" + params.id : ""}`)
   const view = createMemo(() => layout.view(sessionKey))
 
