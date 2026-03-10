@@ -2043,7 +2043,7 @@ export default function Layout(props: ParentProps) {
           aria-label={language.t("sidebar.nav.projectsAndSessions")}
           data-component="sidebar-nav-desktop"
           classList={{
-            "hidden xl:block": true,
+            "hidden 2xl:block": true,
             "relative shrink-0": true,
           }}
           style={{ width: layout.sidebar.opened() ? `${Math.max(layout.sidebar.width(), 244)}px` : "64px" }}
@@ -2115,7 +2115,7 @@ export default function Layout(props: ParentProps) {
             />
           </Show>
         </nav>
-        <div class="xl:hidden flex shrink-0 relative">
+        <div class="2xl:hidden flex shrink-0 relative">
           <nav
             aria-label={language.t("sidebar.nav.projectsAndSessions")}
             data-component="sidebar-nav-mobile"
@@ -2159,7 +2159,7 @@ export default function Layout(props: ParentProps) {
         <main
           classList={{
             "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weak-base": true,
-            "xl:border-l xl:rounded-tl-[12px]": !layout.sidebar.opened(),
+            "2xl:border-l 2xl:rounded-tl-[12px]": !layout.sidebar.opened(),
           }}
         >
           <Show when={!autoselecting()} fallback={<div class="size-full" />}>
