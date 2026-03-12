@@ -20,19 +20,20 @@ import { terminalTabLabel } from "@/pages/session/terminal-label"
 import { createPresence, createSizing, focusTerminalById } from "@/pages/session/helpers"
 import { getTerminalHandoff, setTerminalHandoff } from "@/pages/session/handoff"
 
-export function TerminalPanel() {
+export function TerminalPanel(props: { mode?: "dock" | "main-pane" } = {}) {
   const params = useParams()
   const layout = useLayout()
   const terminal = useTerminal()
   const language = useLanguage()
   const command = useCommand()
 
-  const isDesktop = createMediaQuery("(min-width: 768px)")
+  const isDesktop = createMediaQuery("(min-width: 1024px)")
   const sessionKey = createMemo(() => `${params.dir}${params.id ? "/" + params.id : ""}`)
   const view = createMemo(() => layout.view(sessionKey))
 
+  const inline = createMemo(() => props.mode === "main-pane")
   const opened = createMemo(() => view().terminal.opened())
-  const open = createMemo(() => isDesktop() && opened())
+  const open = createMemo(() => (inline() ? opened() : isDesktop() && opened()))
   const panel = createPresence(open)
   const size = createSizing()
   const height = createMemo(() => layout.terminal.height())
@@ -152,30 +153,35 @@ export function TerminalPanel() {
         aria-label={language.t("terminal.title")}
         aria-hidden={!panel.open()}
         inert={!panel.open()}
-        class="relative w-full shrink-0 overflow-hidden"
+        class="relative overflow-hidden"
         classList={{
+          "size-full min-h-0": inline(),
+          "w-full shrink-0": !inline(),
           "opacity-100": panel.open(),
           "opacity-0 pointer-events-none": !panel.open(),
           "transition-[height,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[height] motion-reduce:transition-none":
-            !size.active(),
+            !inline() && !size.active(),
+          "transition-opacity duration-150 ease-out motion-reduce:transition-none": inline(),
         }}
-        style={{ height: panel.open() ? `${height()}px` : "0px" }}
+        style={inline() ? undefined : { height: panel.open() ? `${height()}px` : "0px" }}
       >
-        <div class="size-full flex flex-col border-t border-border-weak-base">
-          <div onPointerDown={() => size.start()}>
-            <ResizeHandle
-              direction="vertical"
-              size={height()}
-              min={100}
-              max={typeof window === "undefined" ? 1000 : window.innerHeight * 0.6}
-              collapseThreshold={50}
-              onResize={(next) => {
-                size.touch()
-                layout.terminal.resize(next)
-              }}
-              onCollapse={close}
-            />
-          </div>
+        <div class="size-full flex flex-col bg-background-base" classList={{ "border-t border-border-weak-base": !inline() }}>
+          <Show when={!inline()}>
+            <div onPointerDown={() => size.start()}>
+              <ResizeHandle
+                direction="vertical"
+                size={height()}
+                min={100}
+                max={typeof window === "undefined" ? 1000 : window.innerHeight * 0.6}
+                collapseThreshold={50}
+                onResize={(next) => {
+                  size.touch()
+                  layout.terminal.resize(next)
+                }}
+                onCollapse={close}
+              />
+            </div>
+          </Show>
           <Show
             when={terminal.ready()}
             fallback={

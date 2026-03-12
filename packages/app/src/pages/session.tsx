@@ -44,6 +44,7 @@ import { useSessionCommands } from "@/pages/session/use-session-commands"
 import { useSessionHashScroll } from "@/pages/session/use-session-hash-scroll"
 import { same } from "@/utils/same"
 import { formatServerError } from "@/utils/server-errors"
+import { getOpenWorkMobileConfig } from "@/utils/openwork"
 
 const emptyUserMessages: UserMessage[] = []
 
@@ -267,6 +268,7 @@ export default function Page() {
   const sdk = useSDK()
   const prompt = usePrompt()
   const comments = useComments()
+  const openworkMobile = getOpenWorkMobileConfig()
   const [searchParams, setSearchParams] = useSearchParams<{ prompt?: string }>()
 
   createEffect(() => {
@@ -336,11 +338,14 @@ export default function Page() {
     ),
   )
 
-  const isDesktop = createMediaQuery("(min-width: 768px)")
+  const isDesktop = createMediaQuery("(min-width: 1024px)")
   const size = createSizing()
   const desktopReviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
   const desktopFileTreeOpen = createMemo(() => isDesktop() && layout.fileTree.opened())
   const desktopSidePanelOpen = createMemo(() => desktopReviewOpen() || desktopFileTreeOpen())
+  const hideMobileTabs = openworkMobile.hideSessionTabs
+  const inlineMobileTerminal = createMemo(() => !isDesktop() && openworkMobile.terminalMode === "main-pane")
+  const mobileTerminalOpen = createMemo(() => inlineMobileTerminal() && view().terminal.opened())
   const sessionPanelWidth = createMemo(() => {
     if (!desktopSidePanelOpen()) return "100%"
     if (desktopReviewOpen()) return `${layout.session.width()}px`
@@ -781,7 +786,7 @@ export default function Page() {
       .filter((tab) => tab !== "context" && tab !== "review"),
   )
 
-  const mobileChanges = createMemo(() => !isDesktop() && store.mobileTab === "changes")
+  const mobileChanges = createMemo(() => !isDesktop() && !hideMobileTabs && store.mobileTab === "changes")
   const reviewTab = createMemo(() => isDesktop())
 
   const fileTreeTab = () => layout.fileTree.tab()
@@ -1269,9 +1274,9 @@ export default function Page() {
   return (
     <div class="relative bg-background-base size-full overflow-hidden flex flex-col">
       <SessionHeader />
-      <div class="flex-1 min-h-0 flex flex-col md:flex-row">
+      <div class="flex-1 min-h-0 flex flex-col lg:flex-row">
         <SessionMobileTabs
-          open={!isDesktop() && !!params.id}
+          open={!isDesktop() && !!params.id && !hideMobileTabs}
           mobileTab={store.mobileTab}
           hasReview={hasReview()}
           reviewCount={reviewCount()}
@@ -1282,7 +1287,8 @@ export default function Page() {
         {/* Session panel */}
         <div
           classList={{
-            "@container relative shrink-0 flex flex-col min-h-0 h-full bg-background-stronger flex-1 md:flex-none": true,
+            "@container relative shrink-0 flex flex-col min-h-0 h-full bg-background-stronger flex-1 lg:flex-none": true,
+            hidden: !isDesktop() && !hideMobileTabs && store.mobileTab === "changes",
             "transition-[width] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width] motion-reduce:transition-none":
               !size.active() && !ui.reviewSnap,
           }}
@@ -1292,6 +1298,9 @@ export default function Page() {
         >
           <div class="flex-1 min-h-0 overflow-hidden">
             <Switch>
+              <Match when={mobileTerminalOpen()}>
+                <TerminalPanel mode="main-pane" />
+              </Match>
               <Match when={params.id}>
                 <Show when={lastUserMessage()}>
                   <MessageTimeline
@@ -1357,24 +1366,26 @@ export default function Page() {
             </Switch>
           </div>
 
-          <SessionComposerRegion
-            state={composer}
-            ready={!store.deferRender && messagesReady()}
-            centered={centered()}
-            inputRef={(el) => {
-              inputRef = el
-            }}
-            newSessionWorktree={newSessionWorktree()}
-            onNewSessionWorktreeReset={() => setStore("newSessionWorktree", "main")}
-            onSubmit={() => {
-              comments.clear()
-              resumeScroll()
-            }}
-            onResponseSubmit={resumeScroll}
-            setPromptDockRef={(el) => {
-              promptDock = el
-            }}
-          />
+          <Show when={!mobileTerminalOpen() && (isDesktop() || hideMobileTabs || store.mobileTab === "session")}>
+            <SessionComposerRegion
+              state={composer}
+              ready={!store.deferRender && messagesReady()}
+              centered={centered()}
+              inputRef={(el) => {
+                inputRef = el
+              }}
+              newSessionWorktree={newSessionWorktree()}
+              onNewSessionWorktreeReset={() => setStore("newSessionWorktree", "main")}
+              onSubmit={() => {
+                comments.clear()
+                resumeScroll()
+              }}
+              onResponseSubmit={resumeScroll}
+              setPromptDockRef={(el) => {
+                promptDock = el
+              }}
+            />
+          </Show>
 
           <Show when={desktopReviewOpen()}>
             <div onPointerDown={() => size.start()}>
@@ -1401,7 +1412,9 @@ export default function Page() {
         />
       </div>
 
-      <TerminalPanel />
+      <Show when={!inlineMobileTerminal()}>
+        <TerminalPanel />
+      </Show>
     </div>
   )
 }

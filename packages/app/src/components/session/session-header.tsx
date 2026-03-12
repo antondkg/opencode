@@ -21,6 +21,7 @@ import { useLayout } from "@/context/layout"
 import { usePlatform } from "@/context/platform"
 import { useServer } from "@/context/server"
 import { useSync } from "@/context/sync"
+import { getOpenWorkMobileConfig } from "@/utils/openwork"
 import { decode64 } from "@/utils/base64"
 import { Persist, persisted } from "@/utils/persist"
 import { StatusPopover } from "../status-popover"
@@ -229,6 +230,7 @@ export function SessionHeader() {
   const sync = useSync()
   const platform = usePlatform()
   const language = useLanguage()
+  const openworkMobile = getOpenWorkMobileConfig()
 
   const projectDirectory = createMemo(() => decode64(params.dir) ?? "")
   const project = createMemo(() => {
@@ -249,6 +251,7 @@ export function SessionHeader() {
   const sessionKey = createMemo(() => `${params.dir}${params.id ? "/" + params.id : ""}`)
   const view = createMemo(() => layout.view(sessionKey))
   const os = createMemo(() => detectOS(platform))
+  const showMobileTerminalToggle = openworkMobile.terminalMode === "main-pane"
 
   const [exists, setExists] = createStore<Partial<Record<OpenApp, boolean>>>({
     finder: true,
@@ -617,7 +620,14 @@ export function SessionHeader() {
                 </div>
               </Show>
               <div class="flex items-center gap-1">
-                <div class="hidden md:flex items-center gap-1 shrink-0">
+                <div
+                  class="items-center gap-1 shrink-0"
+                  classList={{
+                    flex: showMobileTerminalToggle,
+                    hidden: !showMobileTerminalToggle,
+                    "lg:flex": !showMobileTerminalToggle,
+                  }}
+                >
                   <TooltipKeybind
                     title={language.t("command.terminal.toggle")}
                     keybind={command.keybind("terminal.toggle")}
@@ -649,7 +659,9 @@ export function SessionHeader() {
                       </div>
                     </Button>
                   </TooltipKeybind>
+                </div>
 
+                <div class="hidden lg:flex items-center gap-1 shrink-0">
                   <TooltipKeybind
                     title={language.t("command.review.toggle")}
                     keybind={command.keybind("review.toggle")}

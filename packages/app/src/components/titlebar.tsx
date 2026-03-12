@@ -11,6 +11,7 @@ import { useLayout } from "@/context/layout"
 import { usePlatform } from "@/context/platform"
 import { useCommand } from "@/context/command"
 import { useLanguage } from "@/context/language"
+import { getOpenWorkMobileConfig } from "@/utils/openwork"
 import { applyPath, backPath, forwardPath } from "./titlebar-history"
 
 type TauriDesktopWindow = {
@@ -41,6 +42,7 @@ export function Titlebar() {
   const command = useCommand()
   const language = useLanguage()
   const theme = useTheme()
+  const openworkMobile = getOpenWorkMobileConfig()
   const navigate = useNavigate()
   const location = useLocation()
   const params = useParams()
@@ -50,6 +52,15 @@ export function Titlebar() {
   const web = createMemo(() => platform.platform === "web")
   const zoom = () => platform.webviewZoom?.() ?? 1
   const minHeight = () => (mac() ? `${40 / zoom()}px` : undefined)
+  const toggleMobileSidebar = () => {
+    if (openworkMobile.sessionSidebar.enabled) {
+      layout.mobileSessionSidebar.toggle()
+      return
+    }
+    layout.mobileSidebar.toggle()
+  }
+  const mobileSidebarOpen = () =>
+    openworkMobile.sessionSidebar.enabled ? layout.mobileSessionSidebar.opened() : layout.mobileSidebar.opened()
 
   const [history, setHistory] = createStore({
     stack: [] as string[],
@@ -169,32 +180,32 @@ export function Titlebar() {
       >
         <Show when={mac()}>
           <div class="h-full shrink-0" style={{ width: `${72 / zoom()}px` }} />
-          <div class="xl:hidden w-10 shrink-0 flex items-center justify-center">
+          <div class="2xl:hidden w-10 shrink-0 flex items-center justify-center">
             <IconButton
               icon="menu"
               variant="ghost"
               class="titlebar-icon rounded-md"
-              onClick={layout.mobileSidebar.toggle}
+              onClick={toggleMobileSidebar}
               aria-label={language.t("sidebar.menu.toggle")}
-              aria-expanded={layout.mobileSidebar.opened()}
+              aria-expanded={mobileSidebarOpen()}
             />
           </div>
         </Show>
         <Show when={!mac()}>
-          <div class="xl:hidden w-[48px] shrink-0 flex items-center justify-center">
+          <div class="2xl:hidden w-[48px] shrink-0 flex items-center justify-center">
             <IconButton
               icon="menu"
               variant="ghost"
               class="titlebar-icon rounded-md"
-              onClick={layout.mobileSidebar.toggle}
+              onClick={toggleMobileSidebar}
               aria-label={language.t("sidebar.menu.toggle")}
-              aria-expanded={layout.mobileSidebar.opened()}
+              aria-expanded={mobileSidebarOpen()}
             />
           </div>
         </Show>
         <div class="flex items-center gap-1 shrink-0">
           <TooltipKeybind
-            class={web() ? "hidden xl:flex shrink-0 ml-14" : "hidden xl:flex shrink-0 ml-2"}
+            class={web() ? "hidden 2xl:flex shrink-0 ml-14" : "hidden 2xl:flex shrink-0 ml-2"}
             placement="bottom"
             title={language.t("command.sidebar.toggle")}
             keybind={command.keybind("sidebar.toggle")}
@@ -221,7 +232,7 @@ export function Titlebar() {
               </div>
             </Button>
           </TooltipKeybind>
-          <div class="hidden xl:flex items-center shrink-0">
+          <div class="hidden 2xl:flex items-center shrink-0">
             <Show when={params.dir}>
               <TooltipKeybind
                 placement="bottom"

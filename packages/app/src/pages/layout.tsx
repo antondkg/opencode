@@ -57,6 +57,7 @@ import { DialogEditProject } from "@/components/dialog-edit-project"
 import { Titlebar } from "@/components/titlebar"
 import { useServer } from "@/context/server"
 import { useLanguage, type Locale } from "@/context/language"
+import { getOpenWorkMobileConfig } from "@/utils/openwork"
 import {
   displayName,
   effectiveWorkspaceOrder,
@@ -79,6 +80,7 @@ import {
   WorkspaceDragOverlay,
   type WorkspaceSidebarContext,
 } from "./layout/sidebar-workspace"
+import { MobileSessionSidebar } from "./layout/mobile-session-sidebar"
 import { workspaceOpenState } from "./layout/sidebar-workspace-helpers"
 import { ProjectDragOverlay, SortableProject, type ProjectSidebarContext } from "./layout/sidebar-project"
 import { SidebarContent } from "./layout/sidebar-shell"
@@ -107,6 +109,7 @@ export default function Layout(props: ParentProps) {
   const globalSync = useGlobalSync()
   const layout = useLayout()
   const layoutReady = createMemo(() => layout.ready())
+  const openworkMobile = getOpenWorkMobileConfig()
   const platform = usePlatform()
   const settings = useSettings()
   const server = useServer()
@@ -129,6 +132,11 @@ export default function Layout(props: ParentProps) {
   }
   const colorSchemeLabel = (scheme: ColorScheme) => language.t(colorSchemeKey[scheme])
   const currentDir = createMemo(() => decode64(params.dir) ?? "")
+  const useMobileSessionSidebar = openworkMobile.sessionSidebar.enabled
+  const mobileSessionSidebarOpen = createMemo(
+    () => useMobileSessionSidebar && !!currentDir() && layout.mobileSessionSidebar.opened(),
+  )
+  const mobileSessionSidebarWidth = createMemo(() => layout.mobileSessionSidebar.width())
 
   const [state, setState] = createStore({
     autoselect: !initialDirectory,
@@ -2142,7 +2150,7 @@ export default function Layout(props: ParentProps) {
           aria-label={language.t("sidebar.nav.projectsAndSessions")}
           data-component="sidebar-nav-desktop"
           classList={{
-            "hidden xl:block": true,
+            "hidden 2xl:block": true,
             "absolute inset-y-0 left-0": true,
             "z-10": true,
           }}
@@ -2210,73 +2218,120 @@ export default function Layout(props: ParentProps) {
         </nav>
 
         <div
-          class="hidden xl:block pointer-events-none absolute top-0 right-0 z-0 border-t border-border-weaker-base"
+          class="hidden 2xl:block pointer-events-none absolute top-0 right-0 z-0 border-t border-border-weaker-base"
           style={{ left: "calc(4rem + 12px)" }}
         />
 
-        <div class="xl:hidden">
-          <div
-            classList={{
-              "fixed inset-x-0 top-10 bottom-0 z-40 transition-opacity duration-200": true,
-              "opacity-100 pointer-events-auto": layout.mobileSidebar.opened(),
-              "opacity-0 pointer-events-none": !layout.mobileSidebar.opened(),
-            }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) layout.mobileSidebar.hide()
-            }}
-          />
-          <nav
-            aria-label={language.t("sidebar.nav.projectsAndSessions")}
-            data-component="sidebar-nav-mobile"
-            classList={{
-              "@container fixed top-10 bottom-0 left-0 z-50 w-full max-w-[400px] overflow-hidden border-r border-border-weaker-base bg-background-base transition-transform duration-200 ease-out": true,
-              "translate-x-0": layout.mobileSidebar.opened(),
-              "-translate-x-full": !layout.mobileSidebar.opened(),
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <SidebarContent
-              mobile
-              opened={() => layout.sidebar.opened()}
-              aimMove={aim.move}
-              projects={() => layout.projects.list()}
-              renderProject={(project) => (
-                <SortableProject ctx={projectSidebarCtx} project={project} sortNow={sortNow} mobile />
-              )}
-              handleDragStart={handleDragStart}
-              handleDragEnd={handleDragEnd}
-              handleDragOver={handleDragOver}
-              openProjectLabel={language.t("command.project.open")}
-              openProjectKeybind={() => command.keybind("project.open")}
-              onOpenProject={chooseProject}
-              renderProjectOverlay={() => (
-                <ProjectDragOverlay projects={() => layout.projects.list()} activeProject={() => store.activeProject} />
-              )}
-              settingsLabel={() => language.t("sidebar.settings")}
-              settingsKeybind={() => command.keybind("settings.open")}
-              onOpenSettings={openSettings}
-              helpLabel={() => language.t("sidebar.help")}
-              onOpenHelp={() => platform.openLink("https://opencode.ai/desktop-feedback")}
-              renderPanel={() => <SidebarPanel project={currentProject()} mobile />}
+        <Show when={useMobileSessionSidebar && currentDir()} keyed>
+          {(directory) => (
+            <div
+              class="2xl:hidden absolute inset-y-0 left-0 z-30 flex overflow-hidden bg-background-base"
+              classList={{
+                "border-r border-border-weaker-base": mobileSessionSidebarOpen(),
+                "transition-[width] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width] motion-reduce:transition-none":
+                  !sizing(),
+              }}
+              style={{ width: mobileSessionSidebarOpen() ? `${mobileSessionSidebarWidth()}px` : "0px" }}
+            >
+              <div
+                aria-hidden={!mobileSessionSidebarOpen()}
+                inert={!mobileSessionSidebarOpen()}
+                class="min-w-0 flex-1"
+                classList={{ "pointer-events-none": !mobileSessionSidebarOpen() }}
+              >
+                <MobileSessionSidebar
+                  directory={directory}
+                  sortNow={sortNow}
+                  prefetchSession={prefetchSession}
+                  archiveSession={archiveSession}
+                />
+              </div>
+              <Show when={mobileSessionSidebarOpen()}>
+                <div onPointerDown={() => setSizing(true)}>
+                  <ResizeHandle
+                    direction="horizontal"
+                    size={mobileSessionSidebarWidth()}
+                    min={120}
+                    max={Math.min(typeof window === "undefined" ? 320 : window.innerWidth * 0.6, 320)}
+                    onResize={(width) => {
+                      setSizing(true)
+                      if (sizet !== undefined) clearTimeout(sizet)
+                      sizet = window.setTimeout(() => setSizing(false), 120)
+                      layout.mobileSessionSidebar.resize(width)
+                    }}
+                  />
+                </div>
+              </Show>
+            </div>
+          )}
+        </Show>
+
+        <Show when={!useMobileSessionSidebar}>
+          <div class="2xl:hidden">
+            <div
+              classList={{
+                "fixed inset-x-0 top-10 bottom-0 z-40 transition-opacity duration-200": true,
+                "opacity-100 pointer-events-auto": layout.mobileSidebar.opened(),
+                "opacity-0 pointer-events-none": !layout.mobileSidebar.opened(),
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) layout.mobileSidebar.hide()
+              }}
             />
-          </nav>
-        </div>
+            <nav
+              aria-label={language.t("sidebar.nav.projectsAndSessions")}
+              data-component="sidebar-nav-mobile"
+              classList={{
+                "@container fixed top-10 bottom-0 left-0 z-50 w-full max-w-[400px] overflow-hidden border-r border-border-weaker-base bg-background-base transition-transform duration-200 ease-out": true,
+                "translate-x-0": layout.mobileSidebar.opened(),
+                "-translate-x-full": !layout.mobileSidebar.opened(),
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SidebarContent
+                mobile
+                opened={() => layout.sidebar.opened()}
+                aimMove={aim.move}
+                projects={() => layout.projects.list()}
+                renderProject={(project) => (
+                  <SortableProject ctx={projectSidebarCtx} project={project} sortNow={sortNow} mobile />
+                )}
+                handleDragStart={handleDragStart}
+                handleDragEnd={handleDragEnd}
+                handleDragOver={handleDragOver}
+                openProjectLabel={language.t("command.project.open")}
+                openProjectKeybind={() => command.keybind("project.open")}
+                onOpenProject={chooseProject}
+                renderProjectOverlay={() => (
+                  <ProjectDragOverlay projects={() => layout.projects.list()} activeProject={() => store.activeProject} />
+                )}
+                settingsLabel={() => language.t("sidebar.settings")}
+                settingsKeybind={() => command.keybind("settings.open")}
+                onOpenSettings={openSettings}
+                helpLabel={() => language.t("sidebar.help")}
+                onOpenHelp={() => platform.openLink("https://opencode.ai/desktop-feedback")}
+                renderPanel={() => <SidebarPanel project={currentProject()} mobile />}
+              />
+            </nav>
+          </div>
+        </Show>
 
         <div
           classList={{
-            "absolute inset-0": true,
-            "xl:inset-y-0 xl:right-0 xl:left-[var(--main-left)]": true,
+            "absolute inset-y-0 right-0 left-[var(--mobile-main-left)]": true,
+            "2xl:left-[var(--main-left)]": true,
             "z-20": true,
             "transition-[left] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[left] motion-reduce:transition-none":
               !sizing(),
           }}
           style={{
             "--main-left": layout.sidebar.opened() ? `${Math.max(layout.sidebar.width(), 244)}px` : "4rem",
+            "--mobile-main-left": mobileSessionSidebarOpen() ? `${mobileSessionSidebarWidth()}px` : "0px",
           }}
         >
           <main
             classList={{
-              "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weak-base bg-background-base xl:border-l xl:rounded-tl-[12px]": true,
+              "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weak-base bg-background-base 2xl:border-l 2xl:rounded-tl-[12px]": true,
             }}
           >
             <Show when={!autoselecting()} fallback={<div class="size-full" />}>
@@ -2287,7 +2342,7 @@ export default function Layout(props: ParentProps) {
 
         <div
           classList={{
-            "hidden xl:flex absolute inset-y-0 left-16 z-30": true,
+            "hidden 2xl:flex absolute inset-y-0 left-16 z-30": true,
             "opacity-100 translate-x-0 pointer-events-auto": peeked() && !layout.sidebar.opened(),
             "opacity-0 -translate-x-2 pointer-events-none": !peeked() || layout.sidebar.opened(),
             "transition-[opacity,transform] motion-reduce:transition-none": true,
@@ -2311,7 +2366,7 @@ export default function Layout(props: ParentProps) {
 
         <div
           classList={{
-            "hidden xl:block pointer-events-none absolute inset-y-0 right-0 z-25 overflow-hidden": true,
+            "hidden 2xl:block pointer-events-none absolute inset-y-0 right-0 z-25 overflow-hidden": true,
             "opacity-100 translate-x-0": peeked() && !layout.sidebar.opened(),
             "opacity-0 -translate-x-2": !peeked() || layout.sidebar.opened(),
             "transition-[opacity,transform] motion-reduce:transition-none": true,

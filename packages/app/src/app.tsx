@@ -27,6 +27,7 @@ import { SettingsProvider } from "@/context/settings"
 import { TerminalProvider } from "@/context/terminal"
 import DirectoryLayout from "@/pages/directory-layout"
 import Layout from "@/pages/layout"
+import type { OpenWorkOpencodeConfig } from "@/utils/openwork"
 import { ErrorPage } from "./pages/error"
 import { Dynamic } from "solid-js/web"
 
@@ -62,6 +63,7 @@ declare global {
       deepLinks?: string[]
       wsl?: boolean
     }
+    __OPENWORK_OPENCODE_CONFIG__?: OpenWorkOpencodeConfig
   }
 }
 

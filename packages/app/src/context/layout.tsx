@@ -9,6 +9,7 @@ import { Project } from "@opencode-ai/sdk/v2"
 import { Persist, persisted, removePersisted } from "@/utils/persist"
 import { decode64 } from "@/utils/base64"
 import { same } from "@/utils/same"
+import { getOpenWorkMobileConfig } from "@/utils/openwork"
 import { createScrollPersistence, type SessionScroll } from "./layout-scroll"
 import { createPathHelpers } from "./file/path"
 
@@ -137,6 +138,11 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
     const globalSync = useGlobalSync()
     const server = useServer()
     const platform = usePlatform()
+    const openworkMobile = getOpenWorkMobileConfig()
+    const defaultMobileSessionSidebar = {
+      opened: openworkMobile.sessionSidebar.defaultOpen,
+      width: openworkMobile.sessionSidebar.defaultWidth,
+    }
 
     const isRecord = (value: unknown): value is Record<string, unknown> =>
       typeof value === "object" && value !== null && !Array.isArray(value)
@@ -206,11 +212,24 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         return next
       })()
 
+      const mobileSessionSidebar = value.mobileSessionSidebar
+      const migratedMobileSessionSidebar = (() => {
+        if (
+          isRecord(mobileSessionSidebar) &&
+          typeof mobileSessionSidebar.opened === "boolean" &&
+          typeof mobileSessionSidebar.width === "number"
+        ) {
+          return mobileSessionSidebar
+        }
+        return defaultMobileSessionSidebar
+      })()
+
       if (
         migratedSidebar === sidebar &&
         migratedReview === review &&
         migratedFileTree === fileTree &&
-        migratedSessionTabs === sessionTabs
+        migratedSessionTabs === sessionTabs &&
+        migratedMobileSessionSidebar === mobileSessionSidebar
       ) {
         return value
       }
@@ -221,10 +240,11 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         review: migratedReview,
         fileTree: migratedFileTree,
         sessionTabs: migratedSessionTabs,
+        mobileSessionSidebar: migratedMobileSessionSidebar,
       }
     }
 
-    const target = Persist.global("layout", ["layout.v6"])
+    const target = Persist.global("layout", ["layout.v7", "layout.v6"])
     const [store, setStore, _, ready] = persisted(
       { ...target, migrate },
       createStore({
@@ -253,6 +273,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         mobileSidebar: {
           opened: false,
         },
+        mobileSessionSidebar: defaultMobileSessionSidebar,
         sessionTabs: {} as Record<string, SessionTabs>,
         sessionView: {} as Record<string, SessionView>,
         handoff: {
@@ -686,6 +707,41 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         },
         toggle() {
           setStore("mobileSidebar", "opened", (x) => !x)
+        },
+      },
+      mobileSessionSidebar: {
+        opened: createMemo(() => store.mobileSessionSidebar?.opened ?? defaultMobileSessionSidebar.opened),
+        width: createMemo(() => store.mobileSessionSidebar?.width ?? defaultMobileSessionSidebar.width),
+        show() {
+          if (!store.mobileSessionSidebar) {
+            setStore("mobileSessionSidebar", { ...defaultMobileSessionSidebar, opened: true })
+            return
+          }
+          setStore("mobileSessionSidebar", "opened", true)
+        },
+        hide() {
+          if (!store.mobileSessionSidebar) {
+            setStore("mobileSessionSidebar", { ...defaultMobileSessionSidebar, opened: false })
+            return
+          }
+          setStore("mobileSessionSidebar", "opened", false)
+        },
+        toggle() {
+          if (!store.mobileSessionSidebar) {
+            setStore("mobileSessionSidebar", {
+              ...defaultMobileSessionSidebar,
+              opened: !defaultMobileSessionSidebar.opened,
+            })
+            return
+          }
+          setStore("mobileSessionSidebar", "opened", (x) => !x)
+        },
+        resize(width: number) {
+          if (!store.mobileSessionSidebar) {
+            setStore("mobileSessionSidebar", { ...defaultMobileSessionSidebar, width })
+            return
+          }
+          setStore("mobileSessionSidebar", "width", width)
         },
       },
       pendingMessage: {
