@@ -71,6 +71,7 @@ export type SessionItemProps = {
   mobile?: boolean
   dense?: boolean
   popover?: boolean
+  showArchive?: boolean
   children: Map<string, string[]>
   sidebarExpanded: Accessor<boolean>
   sidebarHovering: Accessor<boolean>
@@ -133,7 +134,7 @@ const SessionRow = (props: {
           </Match>
         </Switch>
       </div>
-      <span class="text-14-regular text-text-strong grow-1 min-w-0 overflow-hidden text-ellipsis truncate">
+      <span class="text-13-regular text-text-strong grow-1 min-w-0 overflow-hidden text-ellipsis" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; word-break: break-word;">
         {props.session.title}
       </span>
     </div>
@@ -276,7 +277,7 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
   return (
     <div
       data-session-id={props.session.id}
-      class="group/session relative w-full rounded-md cursor-default transition-colors pl-2 pr-3
+      class="group/session relative w-full rounded-md cursor-default transition-colors pl-1 pr-1
              hover:bg-surface-raised-base-hover [&:has(:focus-visible)]:bg-surface-raised-base-hover has-[[data-expanded]]:bg-surface-raised-base-hover has-[.active]:bg-surface-base-active"
     >
       <Show
@@ -313,10 +314,11 @@ export const SessionItem = (props: SessionItemProps): JSX.Element => {
       <div
         class={`absolute ${props.dense ? "top-0.5 right-0.5" : "top-1 right-1"} flex items-center gap-0.5 transition-opacity`}
         classList={{
-          "opacity-100 pointer-events-auto": !!props.mobile,
-          "opacity-0 pointer-events-none": !props.mobile,
-          "group-hover/session:opacity-100 group-hover/session:pointer-events-auto": true,
-          "group-focus-within/session:opacity-100 group-focus-within/session:pointer-events-auto": true,
+          "opacity-100 pointer-events-auto": !!props.mobile && props.showArchive !== false,
+          "opacity-0 pointer-events-none": !props.mobile || props.showArchive === false,
+          "group-hover/session:opacity-100 group-hover/session:pointer-events-auto": props.showArchive !== false,
+          "group-focus-within/session:opacity-100 group-focus-within/session:pointer-events-auto":
+            props.showArchive !== false,
         }}
       >
         <Tooltip value={language.t("common.archive")} placement="top">
@@ -364,7 +366,7 @@ export const NewSessionItem = (props: {
         <div class="shrink-0 size-6 flex items-center justify-center">
           <Icon name="plus-small" size="small" class="text-icon-weak" />
         </div>
-        <span class="text-14-regular text-text-strong grow-1 min-w-0 overflow-hidden text-ellipsis truncate">
+        <span class="text-13-regular text-text-strong grow-1 min-w-0 overflow-hidden text-ellipsis truncate">
           {label}
         </span>
       </div>
@@ -372,7 +374,7 @@ export const NewSessionItem = (props: {
   )
 
   return (
-    <div class="group/session relative w-full rounded-md cursor-default transition-colors pl-2 pr-3 hover:bg-surface-raised-base-hover [&:has(:focus-visible)]:bg-surface-raised-base-hover has-[.active]:bg-surface-base-active">
+    <div class="group/session relative w-full rounded-md cursor-default transition-colors pl-1 pr-1 hover:bg-surface-raised-base-hover [&:has(:focus-visible)]:bg-surface-raised-base-hover has-[.active]:bg-surface-base-active">
       <Show
         when={!tooltip()}
         fallback={
