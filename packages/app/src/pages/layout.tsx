@@ -54,6 +54,7 @@ import { createAim } from "@/utils/aim"
 import { setNavigate } from "@/utils/notification-click"
 import { Worktree as WorktreeState } from "@/utils/worktree"
 import { setSessionHandoff } from "@/pages/session/handoff"
+import { isEmbed, getEmbedSidebarOpen, toggleEmbedSidebar, getEmbedSidebarSide, EMBED_SIDEBAR_WIDTH } from "@/utils/embed"
 
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useTheme, type ColorScheme } from "@opencode-ai/ui/theme/context"
@@ -2477,7 +2478,59 @@ export default function Layout(props: ParentProps) {
                 }}
               >
                 <Show when={!autoselecting.loading} fallback={<div class="size-full" />}>
-                  {props.children}
+                  <Show
+                    when={isEmbed()}
+                    fallback={props.children}
+                  >
+                    {/* Embed: flex wrapper with independent session sidebar */}
+                    <div
+                      class="size-full flex"
+                      classList={{
+                        "flex-row": getEmbedSidebarSide() === "left",
+                        "flex-row-reverse": getEmbedSidebarSide() === "right",
+                      }}
+                    >
+                      <Show when={getEmbedSidebarOpen()}>
+                        <nav
+                          data-component="embed-session-sidebar"
+                          class="shrink-0 h-full overflow-hidden bg-background-base flex flex-col"
+                          classList={{
+                            "border-r border-border-weaker-base": getEmbedSidebarSide() === "left",
+                            "border-l border-border-weaker-base": getEmbedSidebarSide() === "right",
+                          }}
+                          style={{ width: `${EMBED_SIDEBAR_WIDTH}px` }}
+                        >
+                          <div class="shrink-0 py-2 px-3">
+                            <Button
+                              size="large"
+                              icon="new-session"
+                              class="w-full"
+                              onClick={() => {
+                                const project = currentProject()
+                                if (!project) return
+                                const slug = base64Encode(project.worktree)
+                                navigate(`/${slug}/session`)
+                              }}
+                            >
+                              {language.t("command.session.new")}
+                            </Button>
+                          </div>
+                          <div class="flex-1 min-h-0 overflow-y-auto px-1">
+                            <Show when={currentProject()}>
+                              <LocalWorkspace
+                                ctx={workspaceSidebarCtx}
+                                project={currentProject()!}
+                                sortNow={sortNow}
+                              />
+                            </Show>
+                          </div>
+                        </nav>
+                      </Show>
+                      <div class="flex-1 min-w-0 min-h-0">
+                        {props.children}
+                      </div>
+                    </div>
+                  </Show>
                 </Show>
               </main>
             </div>

@@ -24,6 +24,7 @@ import { messageAgentColor } from "@/utils/agent"
 import { decode64 } from "@/utils/base64"
 import { Persist, persisted } from "@/utils/persist"
 import { StatusPopover } from "../status-popover"
+import { isEmbed, getEmbedSidebarOpen, toggleEmbedSidebar, getEmbedSidebarSide, toggleEmbedSidebarSide } from "@/utils/embed"
 
 const OPEN_APPS = [
   "vscode",
@@ -262,11 +263,51 @@ export function SessionHeader() {
       .catch((err: unknown) => showRequestError(language, err))
   }
 
+  const leftMount = createMemo(() => document.getElementById("opencode-titlebar-left"))
   const centerMount = createMemo(() => document.getElementById("opencode-titlebar-center"))
   const rightMount = createMemo(() => document.getElementById("opencode-titlebar-right"))
 
   return (
     <>
+      {/* Embed session sidebar + terminal toggles (independent from upstream sidebar) */}
+      <Show when={isEmbed() && leftMount()}>
+        {(mount) => (
+          <Portal mount={mount()}>
+            <div class="flex items-center gap-1">
+              <Tooltip placement="bottom" value="Toggle sessions">
+                <Button
+                  variant="ghost"
+                  class="titlebar-icon w-8 h-6 p-0 box-border shrink-0"
+                  onClick={toggleEmbedSidebar}
+                  aria-label="Toggle session sidebar"
+                >
+                  <Icon size="small" name={getEmbedSidebarOpen() ? "sidebar-active" : "sidebar"} />
+                </Button>
+              </Tooltip>
+              <Tooltip placement="bottom" value={`Move sidebar ${getEmbedSidebarSide() === "left" ? "right" : "left"}`}>
+                <Button
+                  variant="ghost"
+                  class="titlebar-icon w-8 h-6 p-0 box-border shrink-0"
+                  onClick={toggleEmbedSidebarSide}
+                  aria-label="Toggle sidebar side"
+                >
+                  <Icon size="small" name={getEmbedSidebarSide() === "left" ? "layout-left" : "layout-right"} />
+                </Button>
+              </Tooltip>
+              <Tooltip placement="bottom" value={language.t("command.terminal.toggle")}>
+                <Button
+                  variant="ghost"
+                  class="group/terminal-toggle titlebar-icon w-8 h-6 p-0 box-border shrink-0"
+                  onClick={toggleTerminal}
+                  aria-label="Toggle terminal"
+                >
+                  <Icon size="small" name={view().terminal.opened() ? "terminal-active" : "terminal"} />
+                </Button>
+              </Tooltip>
+            </div>
+          </Portal>
+        )}
+      </Show>
       <Show when={centerMount()}>
         {(mount) => (
           <Portal mount={mount()}>

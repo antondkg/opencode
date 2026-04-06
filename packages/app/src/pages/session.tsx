@@ -61,6 +61,7 @@ import { Persist, persisted } from "@/utils/persist"
 import { extractPromptFromParts } from "@/utils/prompt"
 import { same } from "@/utils/same"
 import { formatServerError } from "@/utils/server-errors"
+import { isEmbed } from "@/utils/embed"
 
 const emptyUserMessages: UserMessage[] = []
 type FollowupItem = FollowupDraft & { id: string }
@@ -392,6 +393,7 @@ export default function Page() {
   )
 
   const isDesktop = createMediaQuery("(min-width: 768px)")
+  const embedTerminalFullscreen = createMemo(() => isEmbed() && view().terminal.opened())
   const size = createSizing()
   const desktopReviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
   const desktopFileTreeOpen = createMemo(() => isDesktop() && layout.fileTree.opened())
@@ -1702,10 +1704,20 @@ export default function Page() {
   })
 
   return (
-    <div class="relative bg-background-base size-full overflow-hidden flex flex-col">
+    <div
+      class="relative bg-background-base size-full overflow-hidden flex flex-col"
+      classList={{
+        "[&_#terminal-panel]:flex-1 [&_#terminal-panel]:!h-auto [&_#terminal-panel]:shrink [&_#terminal-panel_>div]:!relative [&_#terminal-panel_>div]:!h-full": embedTerminalFullscreen(),
+      }}
+    >
       <SessionHeader />
-      <div class="flex-1 min-h-0 flex flex-col md:flex-row">
-        <Show when={!isDesktop() && !!params.id}>
+      <div
+        classList={{
+          "flex-1 min-h-0 flex flex-col md:flex-row": true,
+          "hidden": embedTerminalFullscreen(),
+        }}
+      >
+        <Show when={!isDesktop() && !!params.id && !isEmbed()}>
           <Tabs value={store.mobileTab} class="h-auto">
             <Tabs.List>
               <Tabs.Trigger
